@@ -1,5 +1,347 @@
 <!doctype html>
 <html lang="ja">
-<head><meta charset="utf-8"><title>テキスト差分ビューア</title></head>
-<body><h1>テキスト差分ビューア</h1><p>builder がこのファイルを実装で置き換えます。</p></body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>テキスト差分ビューア</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a2332'/%3E%3Crect x='4' y='6' width='10' height='20' rx='1.5' fill='%233d4f66'/%3E%3Crect x='18' y='6' width='10' height='20' rx='1.5' fill='%233d4f66'/%3E%3Crect x='6' y='9' width='6' height='2' rx='.5' fill='%23e85d5d'/%3E%3Crect x='6' y='13' width='6' height='2' rx='.5' fill='%233d4f66' stroke='%235a6f8a' stroke-width='.4'/%3E%3Crect x='20' y='9' width='6' height='2' rx='.5' fill='%233d4f66' stroke='%235a6f8a' stroke-width='.4'/%3E%3Crect x='20' y='13' width='6' height='2' rx='.5' fill='%233dba7a'/%3E%3Cpath d='M15 15h2' stroke='%237a92b0' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg0: #0f1419;
+      --bg1: #1a2332;
+      --bg2: #243044;
+      --ink: #e8eef6;
+      --muted: #8a9bb0;
+      --accent: #3dbba8;
+      --accent-ink: #0a1a18;
+      --added-bg: #1a3d2e;
+      --removed-bg: #4a2020;
+      --changed-bg: #3d3520;
+      --same-bg: transparent;
+      --line: #2a3a50;
+      --radius: 10px;
+      --font-ui: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+      --font-mono: "Cascadia Code", "Sarasa Mono", "Source Han Code JP", "Consolas", "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #1a3a45 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 90% 10%, #2a2440 0%, transparent 50%),
+        linear-gradient(165deg, var(--bg0), #15202b 40%, var(--bg0));
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      margin-bottom: 1.75rem;
+    }
+
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.6rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    @media (max-width: 720px) {
+      .panels { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.04em;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--bg1);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.55;
+      resize: vertical;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61, 187, 168, 0.2);
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+
+    #compare-btn {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.7rem 1.75rem;
+      border-radius: 8px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      transition: transform 0.12s ease, filter 0.12s ease;
+    }
+
+    #compare-btn:hover { filter: brightness(1.08); }
+    #compare-btn:active { transform: scale(0.98); }
+
+    #status {
+      margin: 0 0 0.75rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      background: var(--bg2);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    #result {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--bg1);
+      overflow: auto;
+      min-height: 120px;
+    }
+
+    .diff-line {
+      display: flex;
+      gap: 0.65rem;
+      padding: 0.2rem 0.75rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-bottom: 1px solid rgba(42, 58, 80, 0.45);
+      background: var(--same-bg);
+    }
+
+    .diff-line:last-child { border-bottom: none; }
+
+    .diff-line .mark {
+      flex: 0 0 1.1em;
+      text-align: center;
+      opacity: 0.85;
+      user-select: none;
+    }
+
+    .diff-line .body { flex: 1; min-width: 0; }
+
+    .diff-line.added { background: var(--added-bg); }
+    .diff-line.added .mark { color: #3dba7a; }
+
+    .diff-line.removed { background: var(--removed-bg); }
+    .diff-line.removed .mark { color: #e85d5d; }
+
+    .diff-line.changed { background: var(--changed-bg); }
+    .diff-line.changed .mark { color: #e0c35a; }
+
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+
+    footer a { color: inherit; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>テキスト差分ビューア</h1>
+      <p class="lead">変更前後のテキストを貼り付けて、行単位の差分を確認します。</p>
+    </header>
+
+    <div class="panels">
+      <div>
+        <label for="text-a">変更前</label>
+        <textarea id="text-a" spellcheck="false" placeholder="比較前のテキスト"></textarea>
+      </div>
+      <div>
+        <label for="text-b">変更後</label>
+        <textarea id="text-b" spellcheck="false" placeholder="比較後のテキスト"></textarea>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="compare-btn">比較</button>
+    </div>
+
+    <p id="status">テキストを入力して比較してください</p>
+    <div id="result" aria-live="polite"></div>
+
+    <footer>
+      <a href="https://apps.jozo.beer">apps.jozo.beer</a>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const textA = document.getElementById("text-a");
+      const textB = document.getElementById("text-b");
+      const compareBtn = document.getElementById("compare-btn");
+      const statusEl = document.getElementById("status");
+      const resultEl = document.getElementById("result");
+
+      const MARK = { same: " ", added: "+", removed: "-", changed: "~" };
+
+      function splitLines(text) {
+        if (text === "") return [];
+        return text.split("\n");
+      }
+
+      function computeDiff(aLines, bLines) {
+        const n = aLines.length;
+        const m = bLines.length;
+        const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+
+        for (let i = 1; i <= n; i++) {
+          for (let j = 1; j <= m; j++) {
+            dp[i][j] =
+              aLines[i - 1] === bLines[j - 1]
+                ? dp[i - 1][j - 1] + 1
+                : Math.max(dp[i - 1][j], dp[i][j - 1]);
+          }
+        }
+
+        const raw = [];
+        let i = n;
+        let j = m;
+        while (i > 0 || j > 0) {
+          if (i > 0 && j > 0 && aLines[i - 1] === bLines[j - 1]) {
+            raw.push({ type: "same", text: aLines[i - 1] });
+            i--;
+            j--;
+          } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+            raw.push({ type: "added", text: bLines[j - 1] });
+            j--;
+          } else {
+            raw.push({ type: "removed", text: aLines[i - 1] });
+            i--;
+          }
+        }
+        raw.reverse();
+        return collapseChanged(raw);
+      }
+
+      function collapseChanged(entries) {
+        const out = [];
+        let idx = 0;
+        while (idx < entries.length) {
+          if (entries[idx].type === "same") {
+            out.push(entries[idx]);
+            idx++;
+            continue;
+          }
+
+          const removed = [];
+          while (idx < entries.length && entries[idx].type === "removed") {
+            removed.push(entries[idx]);
+            idx++;
+          }
+          const added = [];
+          while (idx < entries.length && entries[idx].type === "added") {
+            added.push(entries[idx]);
+            idx++;
+          }
+
+          const paired = Math.min(removed.length, added.length);
+          for (let k = 0; k < paired; k++) {
+            out.push({ type: "changed", text: added[k].text });
+          }
+          for (let k = paired; k < removed.length; k++) out.push(removed[k]);
+          for (let k = paired; k < added.length; k++) out.push(added[k]);
+        }
+        return out;
+      }
+
+      function renderDiff(entries) {
+        resultEl.replaceChildren();
+        for (const entry of entries) {
+          const row = document.createElement("div");
+          row.className = "diff-line";
+          if (entry.type !== "same") row.classList.add(entry.type);
+
+          const mark = document.createElement("span");
+          mark.className = "mark";
+          mark.textContent = MARK[entry.type];
+
+          const body = document.createElement("span");
+          body.className = "body";
+          body.textContent = entry.text;
+
+          row.append(mark, body);
+          resultEl.appendChild(row);
+        }
+      }
+
+      function updateStatus(entries) {
+        const diffs = entries.filter((e) => e.type !== "same").length;
+        if (diffs === 0) {
+          statusEl.textContent = "差分はありません";
+          return;
+        }
+        const added = entries.filter((e) => e.type === "added").length;
+        const removed = entries.filter((e) => e.type === "removed").length;
+        const changed = entries.filter((e) => e.type === "changed").length;
+        statusEl.textContent =
+          "差分 " + diffs + " 件（追加 " + added + " / 削除 " + removed + " / 変更 " + changed + "）";
+      }
+
+      function compare() {
+        const aLines = splitLines(textA.value);
+        const bLines = splitLines(textB.value);
+        const entries = computeDiff(aLines, bLines);
+        renderDiff(entries);
+        updateStatus(entries);
+      }
+
+      compareBtn.addEventListener("click", compare);
+    })();
+  </script>
+</body>
 </html>
