@@ -4,6 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>テキスト差分ビューア</title>
+  <meta name="description" content="変更前と変更後のテキストを左右に貼り付けて比較すると、行単位の差分（追加・削除・変更）を色分け表示します。アップロード不要のテキスト差分ビューアです。">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "テキスト差分ビューア",
+    "description": "変更前と変更後のテキストを左右に貼り付けて比較すると、行単位の差分（追加・削除・変更）を色分け表示します。アップロード不要のテキスト差分ビューアです。",
+    "url": "https://text-diff-viewer.jozo.beer/",
+    "applicationCategory": "UtilitiesApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "JPY"
+    }
+  }
+  </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a2332'/%3E%3Crect x='4' y='6' width='10' height='20' rx='1.5' fill='%233d4f66'/%3E%3Crect x='18' y='6' width='10' height='20' rx='1.5' fill='%233d4f66'/%3E%3Crect x='6' y='9' width='6' height='2' rx='.5' fill='%23e85d5d'/%3E%3Crect x='6' y='13' width='6' height='2' rx='.5' fill='%233d4f66' stroke='%235a6f8a' stroke-width='.4'/%3E%3Crect x='20' y='9' width='6' height='2' rx='.5' fill='%233d4f66' stroke='%235a6f8a' stroke-width='.4'/%3E%3Crect x='20' y='13' width='6' height='2' rx='.5' fill='%233dba7a'/%3E%3Cpath d='M15 15h2' stroke='%237a92b0' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E">
   <style>
     :root {
@@ -179,6 +195,41 @@
     .diff-line.changed { background: var(--changed-bg); }
     .diff-line.changed .mark { color: #e0c35a; }
 
+    .guide {
+      margin-top: 2.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .guide h2 {
+      margin: 0 0 0.75rem;
+      color: var(--ink);
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .guide ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    .guide li { margin-bottom: 0.35rem; }
+
+    .guide section + section { margin-top: 1.75rem; }
+
+    .guide dt {
+      margin-top: 0.85rem;
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .guide dt:first-child { margin-top: 0; }
+
+    .guide dd {
+      margin: 0.25rem 0 0;
+    }
+
     footer {
       margin-top: 3rem;
       text-align: center;
@@ -213,6 +264,31 @@
 
     <p id="status">テキストを入力して比較してください</p>
     <div id="result" aria-live="polite"></div>
+
+    <div class="guide">
+      <section id="howto" aria-labelledby="howto-heading">
+        <h2 id="howto-heading">使い方</h2>
+        <ol>
+          <li>左側の「変更前」に元のテキストを貼り付けます。</li>
+          <li>右側の「変更後」に新しいテキストを貼り付けます。</li>
+          <li>「比較」を押します。</li>
+          <li>結果の行頭記号と色で、追加（+）・削除（-）・変更（~）を確認します。</li>
+        </ol>
+      </section>
+      <section id="faq" aria-labelledby="faq-heading">
+        <h2 id="faq-heading">FAQ</h2>
+        <dl>
+          <dt>差分の記号と色は何を表しますか？</dt>
+          <dd>「+」は追加、「-」は削除、「~」は変更です。それぞれ背景色でも区別します。</dd>
+          <dt>入力したテキストはサーバーに送られますか？</dt>
+          <dd>送信しません。比較はブラウザ内だけで行います。</dd>
+          <dt>単語や文字単位の差分は見られますか？</dt>
+          <dd>行単位の比較です。連続する削除と追加は変更行としてまとめます。</dd>
+          <dt>片方だけ空にするとどうなりますか？</dt>
+          <dd>変更後だけある行はすべて追加、変更前だけある行はすべて削除として表示します。</dd>
+        </dl>
+      </section>
+    </div>
 
     <footer>
       <a href="https://apps.jozo.beer">apps.jozo.beer</a>

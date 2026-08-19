@@ -93,3 +93,74 @@ test("AC5: 右が空で左に内容がある場合は全行が削除", async ({ 
   await expect(page.locator("#result .diff-line.added")).toHaveCount(0);
   await expect(page.locator("#result .diff-line.changed")).toHaveCount(0);
 });
+
+test("SEO: meta description があり空でない", async ({ page }) => {
+  await page.goto(APP_URL);
+
+  const description = page.locator('meta[name="description"]');
+  await expect(description).toHaveCount(1);
+  const content = await description.getAttribute("content");
+  expect(content?.trim()).toBeTruthy();
+});
+
+test("SEO: JSON-LD に WebApplication と必須フィールドがある", async ({ page }) => {
+  await page.goto(APP_URL);
+
+  const jsonLd = page.locator('script[type="application/ld+json"]');
+  await expect(jsonLd).toHaveCount(1);
+
+  const parsed: unknown = JSON.parse((await jsonLd.textContent()) ?? "");
+  const app = findWebApplication(parsed);
+  expect(app).toBeTruthy();
+  expect(typeof app.name).toBe("string");
+  expect(app.name.trim()).not.toBe("");
+  expect(typeof app.description).toBe("string");
+  expect(app.description.trim()).not.toBe("");
+  expect(typeof app.url).toBe("string");
+  expect(app.url.trim()).not.toBe("");
+  expect(typeof app.applicationCategory).toBe("string");
+  expect(app.applicationCategory.trim()).not.toBe("");
+  expect(app.offers?.price).toBe("0");
+});
+
+test("SEO: 使い方と FAQ のセクションが DOM 上にある", async ({ page }) => {
+  await page.goto(APP_URL);
+
+  await expect(page.locator("#howto")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "使い方" })).toBeVisible();
+  await expect(page.locator("#faq")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "FAQ" })).toBeVisible();
+});
+
+function findWebApplication(data: unknown): {
+  name: string;
+  description: string;
+  url: string;
+  applicationCategory: string;
+  offers?: { price?: unknown };
+} | null {
+  const nodes: unknown[] = [];
+  if (Array.isArray(data)) {
+    nodes.push(...data);
+  } else if (data && typeof data === "object") {
+    nodes.push(data);
+    const graph = (data as { "@graph"?: unknown })["@graph"];
+    if (Array.isArray(graph)) nodes.push(...graph);
+  }
+
+  for (const node of nodes) {
+    if (!node || typeof node !== "object") continue;
+    const type = (node as { "@type"?: unknown })["@type"];
+    const types = Array.isArray(type) ? type : [type];
+    if (types.includes("WebApplication")) {
+      return node as {
+        name: string;
+        description: string;
+        url: string;
+        applicationCategory: string;
+        offers?: { price?: unknown };
+      };
+    }
+  }
+  return null;
+}
